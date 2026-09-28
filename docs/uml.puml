@@ -1,0 +1,82 @@
+@startuml
+title University Research Sample Archive System
+skinparam classAttributeIconSize 0
+left to right direction
+
+package "registration" {
+  abstract class SampleRegistration {
+    - backend : ArchiveBackend
+    + register(sample : SampleRecord) : void
+    # archive(sample : SampleRecord) : void
+  }
+  class FieldSampleRegistration {
+    + register(sample : SampleRecord) : void
+  }
+  class LabSampleRegistration {
+    + register(sample : SampleRecord) : void
+  }
+}
+
+package "backend" {
+  interface ArchiveBackend {
+    + save(sample : SampleRecord) : void
+  }
+  class LocalArchive {
+    + save(sample : SampleRecord) : void
+  }
+  class CloudArchive {
+    + save(sample : SampleRecord) : void
+  }
+  class LegacyArchiveAdapter {
+    - legacyRegistry : OldFreezerRegistry
+    + save(sample : SampleRecord) : void
+  }
+  class ArchiveBackendSelector {
+    + select(choice : String) : ArchiveBackend
+  }
+}
+
+package "legacy" {
+  class OldFreezerRegistry {
+    + putIntoFreezer(freezerNumber : int, researcherCode : String, serializedSample : String) : int
+  }
+}
+
+package "model" {
+  class SampleRecord <<record>> {
+    + sampleId : String
+    + researcherId : String
+    + description : String
+    + storageLocation : String
+    + collectedAt : LocalDateTime
+    + sampleType : SampleType
+  }
+  enum SampleType {
+    FIELD
+    LAB
+  }
+}
+
+package "exception" {
+  class ArchiveException <<exception>>
+  class ArchiveFullException <<exception>>
+  class InvalidSampleException <<exception>>
+  class UnknownResearcherException <<exception>>
+}
+
+SampleRegistration <|-- FieldSampleRegistration
+SampleRegistration <|-- LabSampleRegistration
+SampleRegistration o-- ArchiveBackend : bridge / delegates
+ArchiveBackend <|.. LocalArchive
+ArchiveBackend <|.. CloudArchive
+ArchiveBackend <|.. LegacyArchiveAdapter
+LegacyArchiveAdapter *-- OldFreezerRegistry : wraps and translates
+ArchiveBackendSelector ..> ArchiveBackend : selects
+ArchiveBackendSelector ..> OldFreezerRegistry : constructs
+ArchiveBackend ..> SampleRecord
+SampleRecord --> SampleType
+ArchiveException <|-- ArchiveFullException
+ArchiveException <|-- InvalidSampleException
+ArchiveException <|-- UnknownResearcherException
+ArchiveBackend ..> ArchiveException : throws
+@enduml
